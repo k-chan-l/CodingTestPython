@@ -1,59 +1,62 @@
 '''
 골목 대장 효성 효율성-2
-N개의 노드를 시작값에서 목적지로 갈때 최대값의 최소비용을 사용해서 가는 방법
+N개의 노드를 시작값에서 목적지로 갈때 전체금액이 c원 이하일때, 한 간선의 최대값의 최소비용을 사용해서 가는 방법
 
-다익스트라 알고리즘을 이용해서 최소값을 구한다.
-첫 줄에 교차로 개수 N, 골목 개수 M, 시작 교차로 번호 A, 도착 교차로 번호 B, 가진 돈 C 가 공백으로 구분되어 주어진다.
-이어서 M 개의 줄에 걸쳐서 각 골목이 잇는 교차로 2개의 번호와, 골목의 수금액이 공백으로 구분되어 주어진다.
-같은 교차로를 잇는 골목은 최대 한 번만 주어지며, 골목은 양방향이다.
+이분탐색으로 각 골목별 최대 건널 수 있는 금액 x를 구한다.
+x의 기본값은 c의 절반, 다익스트라로, 건널수 있는지여부를 확인한다. 건널수 있으면 x값을 내리고, 건널수 없으면 x값을 올린다.
 
-이분탐색으로 각 골목의 최대 비용을 정의하고, 다익스트라로 그 비용만큼 순회, 실패하면 오른쪽, 성공하면, 왼쪽으로 넘긴다.
-왼쪽으로 갔는데 실패했으면 오른쪽 값, 오른쪽 끝까지 갔는데 실패하면-1을 출력한다.
-이분탐색 공부후 다시 보자
 '''
 import sys
 import heapq
 input = sys.stdin.readline
 INF = 10**16
 
+def is_possible(n, st_node, ed_node, c, mid, links):
+    # 다익스트라 우선순위 큐로 거리별로 정렬해서 비용계산, 최소비용이 아니면 패스
+    dists = [INF]*(n+1) # 거리배열
+    pq = []
+    dists[st_node] = 0
+    heapq.heappush(pq, (0, st_node))
+
+    while pq:
+        cur_cost, cur_node = heapq.heappop(pq)
+        if cur_cost != dists[cur_node]:
+            continue
+
+        for next_node, add_cost in links[cur_node]:
+            if add_cost > mid: #이 값이랑 같거나 작은 값만 통과 가능
+                continue
+            next_cost = add_cost + cur_cost
+            if next_cost >= dists[next_node]:
+                continue
+            if next_cost > c:
+                continue
+            dists[next_node] = next_cost
+            heapq.heappush(pq, (next_cost, next_node))
+    return dists[ed_node] <= c
+
 def solve():
     n, m, a, b, c = map(int, input().rstrip().split())
     links = [[] for i in range(n+1)]
     
+    st = INF
+    ed = 0
 
     for i in range(m):
         s_node, e_node, cost = map(int, input().rstrip().split())
         links[s_node].append((e_node, cost))
         links[e_node].append((s_node, cost))
+        st = min(st, cost)
+        ed = max(ed, cost)
     
-    result = INF
-    limit = c // 2
-    div = limit
-    while limit <= c and div != 0:
-        costs = [INF] * (n+1)
-        pq = []
-        heapq.heappush(pq, (0, a)) # cost, start_node
-        costs[a] = 0
-        while pq:
-            cost, s_node = heapq.heappop(pq)
-            if costs[s_node] < cost:
-                continue
-            for i in links[s_node]:
-                next_node, add_cost = i
-                next_cost = cost + add_cost
-                if next_cost > limit:
-                    continue
-                if costs[next_node] <= next_cost :
-                    continue
-                costs[next_node] = next_cost
-                heapq.heappush(pq, (next_cost, next_node))
-        div = div + 1 // 2
-        if costs[b] == INF:
-            limit += div
+    answer = -1
+    while st <= ed:
+        mid = (ed-st)//2 + st
+        if is_possible(n, a, b, c, mid, links):
+            answer = mid
+            ed = mid - 1
         else:
-            result = limit
-            limit -= div
-    if result == INF:
-        result = -1
-    print(result)
+            st = mid + 1
+    print(answer)
+
 solve()
